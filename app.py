@@ -3,6 +3,11 @@ import pandas as pd
 from src.ollama import call_ollama
 from src.executor import execute_code, clean_code
 from src.preprocessor import preprocess_dates
+from src.output_handler import create_prompt
+from src.output_handler import detect_output_type
+from src.output_handler import extract_plot
+from src.output_handler import extract_table
+from src.output_handler import extract_text
 
 st.set_page_config(
     page_title="Autonomous Data Analyst",
@@ -28,7 +33,7 @@ if uploaded_file:
         col2.metric("Total Columns", len(df.columns))
         col3.metric("Memory Usage", f"{df.memory_usage(deep=True).sum() / 1024**2:,.2f} MB")
     
-        st.dataframe(df.head(100))
+        st.dataframe(df.head(100), width='stretch')
         
         st.markdown("**Numeric Columns Summary:**")
         numeric_cols = df.select_dtypes(include="number").columns
@@ -50,7 +55,7 @@ if uploaded_file:
     col1, col2 = st.columns([4, 1])
     with col1:
         question = st.text_input(
-            "Ask a quick question about the data",
+            "Ask a question about the data",
             placeholder="e.g., What is the average sales by region?",
             label_visibility="collapsed"
         )
@@ -58,34 +63,39 @@ if uploaded_file:
         ask_button = st.button("Ask", type="primary", width='stretch')
 
     if ask_button and question:
-        prompt = f"""
-You are a professional data analyst.
+        output_types = detect_output_type(question)
 
-Dataset schema:
-{df.dtypes}
-
-Sample data:
-{df.head().to_string()}
-
-User question:
-"{question}"
-
-Your task:
-1. Think step by step.
-2. Write Python code using pandas.
-3. Print the final answer clearly.
-4. DO NOT explain the code.
-5. ONLY output Python code.
-
-Assume the dataframe is named df.
-"""
+        prompt = create_prompt(question, df, output_types)
+        
         with st.spinner("Analyzing data..."):
             code = call_ollama(prompt)
         
         code = clean_code(code)
-        output, env = execute_code(code, df)
+
+        with st.spinner("Executing analysis..."):
+            output, env = execute_code(code, df)
 
         st.markdown("### Result")
-        st.text(output)
+
+        if output_types['text']:
+            st.markdown(extract_text(output))
+            
+        if output_types['graph']:
+            plot_bytes = extract_plot(env)
+            if plot_bytes:
+                st.image(plot_bytes)
+            else:
+                st.warning("No graph generated.")
+
+        if output_types['table']:
+            table = extract_table(env)
+            if table is not None:
+                st.dataframe(table)
+            else:
+                st.warning("No table generated.")
+
+        with st.expander("Generated Code", expanded=False):
+            st.code(code, language='python')
+
 else:
     st.stop()
