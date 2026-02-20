@@ -20,12 +20,12 @@ uploaded_file = st.file_uploader("Upload CSV file", type=["csv"], help="Upload a
 
 if uploaded_file:
     try:
-        df = pd.read_csv(uploaded_file)
+        df = pd.read_csv(uploaded_file, low_memory=False)
     except UnicodeDecodeError:
         uploaded_file.seek(0)
-        df = pd.read_csv(uploaded_file, encoding='latin1')
+        df = pd.read_csv(uploaded_file, encoding='latin1', low_memory=False)
     
-    df = preprocess_dates(df)
+    # df = preprocess_dates(df)
 
     with st.expander("Dataset Overview", expanded=False):
         col1, col2, col3 = st.columns(3)
@@ -75,24 +75,23 @@ if uploaded_file:
         with st.spinner("Executing analysis..."):
             output, env = execute_code(code, df)
 
-        st.markdown("### Result")
+        #st.markdown("### Result")
 
         if output_types['text']:
-            st.markdown(extract_text(output))
+            st.subheader("Insights")
+            st.success(extract_text(output))
             
         if output_types['graph']:
             plot_bytes = extract_plot(env)
-            if plot_bytes:
+            if plot_bytes is not None:
+                st.subheader("Graph")
                 st.image(plot_bytes)
-            else:
-                st.warning("No graph generated.")
 
         if output_types['table']:
             table = extract_table(env)
             if table is not None:
+                st.subheader("Table")
                 st.dataframe(table)
-            else:
-                st.warning("No table generated.")
 
         with st.expander("Generated Code", expanded=False):
             st.code(code, language='python')

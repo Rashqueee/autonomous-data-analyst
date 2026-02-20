@@ -1,4 +1,6 @@
-# Autonomous Data Analyst — Local LLM Powered Data Exploration
+# Autonomous Data Analyst — LLM Powered Data Analysis
+
+![Cover](cover.png)
 
 **Autonomous Data Analyst** is an AI-powered web application that enables users to perform exploratory data analysis using natural language. This project leverages locally hosted Large Language Models via **Ollama** to automatically generate Python code, execute it, and provide instant insights based on uploaded datasets—all while maintaining data privacy.
 
